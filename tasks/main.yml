@@ -1,0 +1,109 @@
+---
+- name: "Include {{ ansible_distribution }} variables"
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
+  tags:
+    - install
+    - configure
+
+- name: "Include {{ ansible_distribution }} tasks"
+  include_tasks: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
+  tags: install
+
+- block:
+    - name: "create dropin folder"
+      file:
+        path: "{{ openio_docker_systemd_folder }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 750
+      tags: configure
+      when: >
+        openio_environment.http_proxy is defined
+        or openio_environment.https_proxy is defined
+        or openio_environment.no_proxy is defined
+
+    - name: "Add http_proxy"
+      template:
+        src: "http_proxy.conf.j2"
+        dest: "{{ openio_docker_systemd_folder }}/http_proxy.conf"
+        owner: root
+        group: root
+        mode: 0640
+      register: http_proxy
+      tags: configure
+      when:
+        - openio_environment.http_proxy is defined
+
+    - name: "Add https_proxy"
+      template:
+        src: "https_proxy.conf.j2"
+        dest: "{{ openio_docker_systemd_folder }}/https_proxy.conf"
+        owner: root
+        group: root
+        mode: 0640
+      register: https_proxy
+      tags: configure
+      when:
+        - openio_environment.https_proxy is defined
+
+    - name: "Add no_proxy"
+      template:
+        src: "no_proxy.conf.j2"
+        dest: "{{ openio_docker_systemd_folder }}/no_proxy.conf"
+        owner: root
+        group: root
+        mode: 0640
+      register: no_proxy
+      tags: configure
+      when:
+        - openio_environment.no_proxy is defined
+
+    - name: Restart docker
+      systemd:
+        daemon_reload: true
+        state: restarted
+        name: "{{ openio_docker_service }}"
+      tags: configure
+      when:
+        - not openio_docker_provision_only
+        - http_proxy is changed or https_proxy is changed or no_proxy is changed
+
+  when: openio_environment is defined
+
+- name: create /etc/docker
+  file:
+    path: /etc/docker
+    state: directory
+    owner: root
+    group: root
+    mode: 600
+  tags: configure
+  when: openio_docker_daemon_configuration
+
+- name: configure docker daemon.json
+  template:
+    src: daemon.json.j2
+    dest: "{{ openio_docker_daemon_configuration_file }}"
+    mode: 0400
+    owner: root
+    group: root
+  register: daemon_config
+  tags: configure
+
+- name: Ensure service is started
+  service:
+    name: "{{ openio_docker_service }}"
+    state: "{{ state }}"
+    enabled: "{{ openio_docker_service_enabled }}"
+  when: not openio_docker_provision_only
+  tags: configure
+  vars:
+    state: "{% if daemon_config is changed %}restarted{% else %}started{% endif %}"
+...

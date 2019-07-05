@@ -1,0 +1,13 @@
+---
+openio_docker_compose: true
+
+openio_docker_service_enabled: true
+openio_docker_apt_arch: amd64
+openio_docker_provision_only: false
+
+openio_docker_daemon_configuration:
+  log-driver: "json-file"
+  log-opts:
+    max-size: "10m"
+    max-file: "3"
+...

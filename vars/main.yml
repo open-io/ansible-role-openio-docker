@@ -1,0 +1,4 @@
+---
+openio_docker_daemon_configuration_file: /etc/docker/daemon.json
+openio_docker_systemd_folder: /etc/systemd/system/docker.service.d/
+...

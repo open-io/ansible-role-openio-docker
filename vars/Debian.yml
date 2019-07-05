@@ -1,0 +1,15 @@
+---
+openio_docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+
+openio_docker_compose_packages:
+  - docker-compose
+
+openio_docker_repo_url: >
+  deb [arch={{ openio_docker_apt_arch }}]
+  https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
+
+openio_docker_service: docker
+...
